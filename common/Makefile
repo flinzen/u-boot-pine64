@@ -192,6 +192,7 @@ obj-$(CONFIG_CMD_UBI) += cmd_ubi.o
 obj-$(CONFIG_CMD_UBIFS) += cmd_ubifs.o
 obj-$(CONFIG_CMD_UNIVERSE) += cmd_universe.o
 obj-$(CONFIG_CMD_UNZIP) += cmd_unzip.o
+obj-$(CONFIG_CMD_VIBRO) += cmd_vibro.o
 ifdef CONFIG_LZMA
 obj-$(CONFIG_CMD_LZMADEC) += cmd_lzmadec.o
 endif
@@ -209,6 +210,7 @@ obj-$(CONFIG_YAFFS2) += cmd_yaffs2.o
 obj-$(CONFIG_CMD_SPL) += cmd_spl.o
 obj-$(CONFIG_CMD_ZIP) += cmd_zip.o
 obj-$(CONFIG_CMD_ZFS) += cmd_zfs.o
+
 
 # others
 obj-$(CONFIG_BOOTSTAGE) += bootstage.o

@@ -220,6 +220,7 @@
 #define CONFIG_SUNXI_DMA
 #define CONFIG_CMD_MEMORY
 #define CONFIG_CMD_MEMINFO
+#define CONFIG_CMD_VIBRO
 
 
 #define SUNXI_DMA_LINK_NULL       (0x1ffff800)
