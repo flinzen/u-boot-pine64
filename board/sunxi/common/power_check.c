@@ -240,6 +240,12 @@ int PowerCheck(void)
 	{
 		return 0;
 	}
+	
+	PowerOnCause = ProbeStartupCause();
+	if (PowerOnCause == AXP_POWER_ON_BY_POWER_TRIGGER) {
+		EnterShutDownWithChargeMode();
+		return 0;
+	}
 
 
 	nodeoffset =  fdt_path_offset(working_fdt,PMU_SCRIPT_NAME);
@@ -297,7 +303,7 @@ int PowerCheck(void)
 
 	LowBatRatioFlag =  (BatRatio<1) ? 1:0;
 	LowVoltageFlag  =  (BatVol<SafeVol) ? 1:0;
-	PowerOnCause = ProbeStartupCause();
+	
 
 
 	if(LowBatRatioFlag)
