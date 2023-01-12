@@ -22,6 +22,8 @@
 #include <asm/arch/orion5x.h>
 #elif defined(CONFIG_KIRKWOOD)
 #include <asm/arch/kirkwood.h>
+#elif defined(CONFIG_ARCH_SUN50IW1P1)
+#include <asm/arch/i2c.h>
 #else
 #error Driver mvtwsi not supported by SoC or board
 #endif
@@ -29,7 +31,20 @@
 /*
  * TWSI register structure
  */
+#ifdef CONFIG_ARCH_SUN50IW1P1
 
+struct  mvtwsi_registers {
+	u32 slave_address;
+	u32 xtnd_slave_addr;
+	u32 data;
+	u32 control;
+	u32 status;
+	u32 baudrate;
+	u32 soft_reset;
+	u32 debug; /* Dummy field for build compatibility with mvebu */
+};
+
+#else
 struct  mvtwsi_registers {
 	u32 slave_address;
 	u32 data;
@@ -42,7 +57,7 @@ struct  mvtwsi_registers {
 	u32 reserved[2];
 	u32 soft_reset;
 };
-
+#endif
 /*
  * Control register fields
  */
@@ -77,7 +92,7 @@ struct  mvtwsi_registers {
  */
 
 static struct  mvtwsi_registers *twsi =
-	(struct  mvtwsi_registers *) CONFIG_I2C_MVTWSI_BASE;
+	(struct  mvtwsi_registers *) CFG_I2C_MVTWSI_BASE1;
 
 /*
  * Returned statuses are 0 for success and nonzero otherwise.
@@ -216,7 +231,7 @@ static int twsi_stop(int status)
  */
 
 #define TWSI_FREQUENCY(m, n) \
-	(CONFIG_SYS_TCLK / (10 * (m + 1) * (1 << n)))
+	(CFG_SYS_TCLK / (10 * (m + 1) * (1 << n)))
 
 /*
  * Reset controller.
