@@ -12,6 +12,9 @@
 #include <i2c.h>
 #include <asm/errno.h>
 #include <asm/io.h>
+#include <asm/gpio.h>
+#include <asm/arch/gpio.h>
+#include <smc.h>
 
 /*
  * include a file that will provide CONFIG_I2C_MVTWSI_BASE
@@ -41,7 +44,9 @@ struct  mvtwsi_registers {
 	u32 status;
 	u32 baudrate;
 	u32 soft_reset;
-	u32 debug; /* Dummy field for build compatibility with mvebu */
+	u32 efr;
+	u32 lcr;
+	u32 dvfs;
 };
 
 #else
@@ -77,6 +82,7 @@ struct  mvtwsi_registers {
  * code.
  */
 
+
 #define	MVTWSI_STATUS_START		0x08
 #define	MVTWSI_STATUS_REPEATED_START	0x10
 #define	MVTWSI_STATUS_ADDR_W_ACK	0x18
@@ -86,6 +92,7 @@ struct  mvtwsi_registers {
 #define	MVTWSI_STATUS_DATA_R_ACK	0x50
 #define	MVTWSI_STATUS_DATA_R_NAK	0x58
 #define	MVTWSI_STATUS_IDLE		0xF8
+
 
 /*
  * The single instance of the controller we'll be dealing with
@@ -123,18 +130,21 @@ static int twsi_wait(int expected_status)
 		control = readl(&twsi->control);
 		if (control & MVTWSI_CONTROL_IFLG) {
 			status = readl(&twsi->status);
-			if (status == expected_status)
+			if (status == expected_status) {
 				return 0;
-			else
+			}
+			else {
 				return MVTWSI_ERROR(
 					MVTWSI_ERROR_WRONG_STATUS,
 					control, status, expected_status);
+			}
 		}
 		udelay(10); /* one clock cycle at 100 kHz */
 	} while (timeout--);
 	status = readl(&twsi->status);
 	return MVTWSI_ERROR(
 		MVTWSI_ERROR_TIMEOUT, control, status, expected_status);
+	
 }
 
 /*
@@ -155,7 +165,7 @@ static int twsi_start(int expected_status)
 	/* globally set TWSIEN in case it was not */
 	twsi_control_flags |= MVTWSI_CONTROL_TWSIEN;
 	/* assert START */
-	writel(twsi_control_flags | MVTWSI_CONTROL_START, &twsi->control);
+	writel(twsi_control_flags | MVTWSI_CONTROL_START | MVTWSI_CONTROL_IFLG, &twsi->control);
 	/* wait for controller to process START */
 	return twsi_wait(expected_status);
 }
@@ -168,7 +178,7 @@ static int twsi_send(u8 byte, int expected_status)
 	/* put byte in data register for sending */
 	writel(byte, &twsi->data);
 	/* clear any pending interrupt -- that'll cause sending */
-	writel(twsi_control_flags, &twsi->control);
+	writel(twsi_control_flags | MVTWSI_CONTROL_IFLG, &twsi->control);
 	/* wait for controller to receive byte and check ACK */
 	return twsi_wait(expected_status);
 }
@@ -187,7 +197,7 @@ static int twsi_recv(u8 *byte)
 	else
 		expected_status = MVTWSI_STATUS_DATA_R_NAK;
 	/* acknowledge *previous state* and launch receive */
-	writel(twsi_control_flags, &twsi->control);
+	writel(twsi_control_flags | MVTWSI_CONTROL_IFLG, &twsi->control);
 	/* wait for controller to receive byte and assert ACK or NAK */
 	status = twsi_wait(expected_status);
 	/* if we did receive expected byte then store it */
@@ -207,7 +217,7 @@ static int twsi_stop(int status)
 	int timeout = 1000;
 
 	/* assert STOP */
-	control = MVTWSI_CONTROL_TWSIEN | MVTWSI_CONTROL_STOP;
+	control = MVTWSI_CONTROL_TWSIEN | MVTWSI_CONTROL_STOP | MVTWSI_CONTROL_IFLG;
 	writel(control, &twsi->control);
 	/* wait for IDLE; IFLG won't rise so twsi_wait() is no use. */
 	do {
@@ -256,14 +266,59 @@ static void twsi_reset(u8 baud_rate, u8 slave_address)
 	(void) twsi_stop(0);
 }
 
+static int gpio_cfg(u32 port, u32 port_num, u32 val) {
+	u32 reg_val;
+	u32 port_num_func = port_num >> 3;
+	
+	volatile __u32      *tmp_group_func_addr = NULL;
+	tmp_group_func_addr = PIO_REG_CFG(port, port_num_func);
+	
+	reg_val = GPIO_REG_READ(tmp_group_func_addr);
+	reg_val &= ~(0x07 << (((port_num - (port_num_func<<3))<<2)));
+	reg_val |=  2 << (((port_num - (port_num_func<<3))<<2));
+	
+	GPIO_REG_WRITE(tmp_group_func_addr, reg_val);
+	
+	reg_val = PIO_REG_CFG_VALUE(port, port_num_func);
+	return 0;
+}
+
 /*
  * I2C init called by cmd_i2c when doing 'i2c reset'.
  * Sets baud to the highest possible value not exceeding requested one.
  */
+
+ static int gpio_output(u32 port, u32 port_num, u32 val) {
+	u32 reg_val;
+	volatile __u32     *tmp_addr;
+	
+	tmp_addr = PIO_REG_DATA(port);
+	reg_val = GPIO_REG_READ(tmp_addr);                                                 
+	reg_val &= ~(0x01 << port_num);
+	reg_val |=  (val & 0x01) << port_num;
+	GPIO_REG_WRITE(tmp_addr, reg_val);
+	
+	return 0;
+}
+
+#define GATING_TWI_1_ON (1 << 1)
+#define GATING_TWI_1_RESET (1 << 1)
 void i2c_init(int requested_speed, int slaveadd)
 {
 	int	tmp_speed, highest_speed, n, m;
 	int	baud = 0x44; /* baudrate at controller reset */
+	u32 gating_twi_1, gating_reset_twi_1; 
+	u32 status = readl(&twsi->status);
+	printf("i2c init, status: %d\n", status);
+	gpio_cfg(8, 2, 2);
+	gpio_cfg(8, 3, 2);
+	gpio_cfg(8, 6, 1);
+	gpio_output(8,6,1);
+	//axp81_set_supply_status(PMU_SUPPLY_ELDO3, 1800, 1);
+	gating_twi_1 = readl(A64_CCU + 0x6C);
+	writel(gating_twi_1 | GATING_TWI_1_ON, A64_CCU + 0x6C);
+	gating_reset_twi_1 = readl(A64_CCU + 0x2d8);
+	writel(gating_reset_twi_1 | GATING_TWI_1_RESET, A64_CCU + 0x2d8);
 
 	/* use actual speed to collect progressively higher values */
 	highest_speed = 0;
@@ -279,6 +334,8 @@ void i2c_init(int requested_speed, int slaveadd)
 		}
 	}
 	/* reset controller */
+	
+	printf("i2c baudrate %d\n", baud);
 	twsi_reset(baud, slaveadd);
 }
 
@@ -299,8 +356,9 @@ static int i2c_begin(int expected_start_status, u8 addr)
 	/* assert START */
 	status = twsi_start(expected_start_status);
 	/* send out the address if the start went well */
-	if (status == 0)
+	if (status == 0) { 
 		status = twsi_send(addr, expected_addr_status);
+	}
 	/* return ok or status of first failure to caller */
 	return status;
 }
@@ -317,8 +375,9 @@ int i2c_probe(uchar chip)
 	/* begin i2c read */
 	status = i2c_begin(MVTWSI_STATUS_START, (chip << 1) | 1);
 	/* dummy read was accepted: receive byte but NAK it. */
-	if (status == 0)
+	if (status == 0) {
 		status = twsi_recv(&dummy_byte);
+	}
 	/* Stop transaction */
 	twsi_stop(0);
 	/* return 0 or status of first failure */

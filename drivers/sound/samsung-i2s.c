@@ -275,12 +275,12 @@ int i2s_transfer_tx_data(struct i2stx_info *pi2s_tx, unsigned int *data,
 
 	data_size -= FIFO_LENGTH;
 	i2s_txctrl(i2s_reg, I2S_TX_ON);
-
+	start = get_timer(0);
 	while (data_size > 0) {
-		start = get_timer(0);
 		if (!(CON_TXFIFO_FULL & (readl(&i2s_reg->con)))) {
 			writel(*data++, &i2s_reg->txd);
 			data_size--;
+			start = get_timer(0);
 		} else {
 			if (get_timer(start) > TIMEOUT_I2S_TX) {
 				i2s_txctrl(i2s_reg, I2S_TX_OFF);

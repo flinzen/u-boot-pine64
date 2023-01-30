@@ -6,6 +6,9 @@
 #include <power/sunxi/power.h>
 #include <sunxi_board.h>
 #include <fdt_support.h>
+#include <asm/io.h>
+#include <asm/arch/gpio.h>
+#include <smc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -217,7 +220,31 @@ static BOOT_POWER_STATE_E GetStateOnHighBatteryRatio(int PowerBus,int LowVoltage
 	return BootPowerState;
 }
 
+static int gpio_output(u32 port, u32 port_num, u32 val) {
+	u32 reg_val;
+	volatile __u32     *tmp_addr;
+	
+	tmp_addr = PIO_REG_DATA(port);
+	reg_val = GPIO_REG_READ(tmp_addr);                                                 
+	reg_val &= ~(0x01 << port_num);
+	reg_val |=  (val & 0x01) << port_num;
+	GPIO_REG_WRITE(tmp_addr, reg_val);
+	
+	return 0;
+}
 
+static int gpio_cfg(u32 port, u32 port_num, u32 val) {
+	u32 reg_val;
+	volatile __u32      *tmp_group_func_addr = NULL;
+	u32 port_num_func = port_num >> 3;
+	tmp_group_func_addr = PIO_REG_CFG(port, port_num_func);
+	reg_val = GPIO_REG_READ(tmp_group_func_addr);
+	reg_val &= ~(0x07 << (((port_num - (port_num_func<<3))<<2)));
+	reg_val |=  val << (((port_num - (port_num_func<<3))<<2));
+	
+	GPIO_REG_WRITE(tmp_group_func_addr, reg_val);
+	return 0;
+}
 
 //function : PowerCheck
 //para: null
@@ -272,6 +299,10 @@ int PowerCheck(void)
 	//if android call shutdown when  charing , then boot should enter android charge mode
 	if((PMU_PRE_CHARGE_MODE == ProbePreSystemMode()))
 	{
+		gpio_cfg(4, 1, 1);
+		gpio_output(4, 1, 1);
+		udelay(500*1000);
+		gpio_output(4, 1, 0);
 		if(PowerBus)
 		{
 			EnterAndroidChargeMode();

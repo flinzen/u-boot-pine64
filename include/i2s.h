@@ -64,7 +64,7 @@
 #define I2S_TX_ON	1
 #define I2S_TX_OFF	0
 
-#define FIFO_LENGTH	64
+#define FIFO_LENGTH	128
 
 /* I2s Registers */
 struct i2s_reg {
