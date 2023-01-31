@@ -427,19 +427,12 @@ int i2s_transfer_tx_data(struct i2stx_info *pi2s_tx, unsigned int *data,
 	/* fill the tx buffer before stating the tx transmit */
     i2s_txctrl(i2s_reg, I2S_TX_ON);
     
-    istat = readl(&i2s_reg->ista);
-    printf("%s: xxx %d \n", __func__, istat);
 	for (i = 0; i < FIFO_LENGTH; i++)
 		writel(*data++, &i2s_reg->txfifo);
-    istat = readl(&i2s_reg->ista);
-    printf("%s: yyy %d \n", __func__, istat);
     i2s_prepare(i2s_reg);
 	data_size -= FIFO_LENGTH;
-    istat = readl(&i2s_reg->ista);
-    printf("%s: zzz %d \n", __func__, istat);
     start = get_timer(0);
 	while (data_size > 0) {
-        //printf("%s: cycle i2s %d \n", __func__, istat);
         istat = readl(&i2s_reg->ista);
 		if ((0x10 & (istat))) {
 			writel(*data++, &i2s_reg->txfifo);
@@ -454,7 +447,6 @@ int i2s_transfer_tx_data(struct i2stx_info *pi2s_tx, unsigned int *data,
 		}
        ;
 	}
-    printf("%s: endcyclei2s\n", __func__);
 	i2s_txctrl(i2s_reg, I2S_TX_OFF);
 	return 0;
 }
@@ -466,12 +458,11 @@ int i2s_transfer_tx_data(struct i2stx_info *pi2s_tx, unsigned int *data,
 #define WSS                                     (2)
 
 
-static int sunxi_i2s_set_clkdiv(struct sunxi_i2s_reg *i2s_reg, int samplerate, u32 sample_resolution)
+static int sunxi_i2s_set_clkdiv(struct sunxi_i2s_reg *i2s_reg, int samplerate, u32 pcm_lrck_period, u32 slot_width)
 {
 	u32 reg_val = 0;
 	u32 mclk_div = 0;
 	u32 bclk_div = 0;
-    u32 slot_width = sample_resolution;
 
 	reg_val = readl(&i2s_reg->clkd);
 	/*i2s mode*/
@@ -484,11 +475,11 @@ static int sunxi_i2s_set_clkdiv(struct sunxi_i2s_reg *i2s_reg, int samplerate, u
         case 12000:
         case 16000:
         case 8000:
-            bclk_div = ((24576000/samplerate)/(2*32));
+            bclk_div = ((24576000/samplerate)/(2*pcm_lrck_period));
             mclk_div = 1;
         break;
         default:
-            bclk_div = ((22579200/samplerate)/(2*32));
+            bclk_div = ((22579200/samplerate)/(2*pcm_lrck_period));
             mclk_div = 1;
         break;
     }
@@ -568,7 +559,7 @@ static int sunxi_i2s_set_clkdiv(struct sunxi_i2s_reg *i2s_reg, int samplerate, u
 	reg_val = readl(&i2s_reg->fmt0);
 	reg_val &= ~(0x3ff<<20);
 	reg_val &= ~(0x3ff<<8);
-	reg_val |= (32-1)<<8;
+	reg_val |= (pcm_lrck_period-1)<<8;
 	reg_val |= (1-1)<<20;
 	writel(reg_val, &i2s_reg->fmt0);
 
@@ -682,7 +673,7 @@ int i2s_tx_init(struct i2stx_info *pi2s_tx)
 	if (ret == 0) {
 		//i2s_set_lr_framesize(i2s_reg, pi2s_tx->rfs);
         i2s_hw_params(i2s_reg, pi2s_tx->bitspersample);
-		ret = sunxi_i2s_set_clkdiv(i2s_reg, pi2s_tx->samplingrate, pi2s_tx->bitspersample);
+		ret = sunxi_i2s_set_clkdiv(i2s_reg, pi2s_tx->samplingrate, 32, 32);
 		if (ret != 0) {
 			printf("%s:set sample rate failed\n", __func__);
 			return -1;

@@ -161,31 +161,31 @@ static const struct reg_default wm8904_reg_defaults[] = {
 
 static int wm8904_i2c_write(unsigned int reg, unsigned short data)
 {
-	unsigned char val[2];
+	u8 val[2];
 
-	val[0] = (unsigned char)((data >> 8) & 0xff);
-	val[1] = (unsigned char)(data & 0xff);
-	printf("Write Addr : 0x%04X, Data :  0x%04X\n", reg, data);
+	val[0] = (u8)((data >> 8) & 0xff);
+	val[1] = (u8)(data & 0xff);
+	debug("Write Addr : 0x%04X, Data :  0x%04X\n", reg, data);
 
-	return i2c_write(0x1a, reg, 2, val, 2);
+	return i2c_write(0x1a, reg, 1, val, 2);
 }
 
 static unsigned int wm8904_i2c_read(unsigned int reg, unsigned short *data)
 {
-	unsigned char val[2];
+	u8 val[2];
 	int ret;
+	*data = 0;
 
-	ret = i2c_read(0x1a, reg, 2, val, 2);
+	ret = i2c_read(0x1a, reg, 1, val, 2);
 	if (ret != 0) {
-		printf("%s: Error while reading register %#04x\n",
+		debug("%s: Error while reading register %#04x\n",
 		      __func__, reg);
 		return -1;
 	}
-
 	*data = val[0];
 	*data <<= 8;
 	*data |= val[1];
-
+	debug("%02x: %04x\n", reg, *data);
 	return 0;
 }
 
@@ -221,7 +221,7 @@ static int wm8904_configure_clocking(void)
 	/* This should be done on init() for bypass paths */
 	switch (wm8904->sysclk_src) {
 	case WM8904_CLK_MCLK:
-		printf("Using %dHz MCLK\n", wm8904->mclk_rate);
+		debug("Using %dHz MCLK\n", wm8904->mclk_rate);
 
 		clock2 &= ~WM8904_SYSCLK_SRC;
 		rate = wm8904->mclk_rate;
@@ -232,7 +232,7 @@ static int wm8904_configure_clocking(void)
 		break;
 
 	case WM8904_CLK_FLL:
-		printf("Using %dHz FLL clock\n",
+		debug("Using %dHz FLL clock\n",
 			wm8904->fll_fout);
 
 		clock2 |= WM8904_SYSCLK_SRC;
@@ -240,7 +240,7 @@ static int wm8904_configure_clocking(void)
 		break;
 
 	default:
-		printf("System clock not configured\n");
+		debug("System clock not configured\n");
 		return -1;
 	}
 
@@ -259,7 +259,7 @@ static int wm8904_configure_clocking(void)
 	wm8904_update_bits(WM8904_CLOCK_RATES_2,
 			    WM8904_CLK_SYS_ENA | WM8904_SYSCLK_SRC, clock2);
 
-	printf("CLK_SYS is %dHz\n", wm8904->sysclk_rate);
+	debug("CLK_SYS is %dHz\n", wm8904->sysclk_rate);
 
 	return 0;
 }
@@ -309,7 +309,7 @@ static void wm8904_set_retune_mobile(void)
 		}
 	}
 
-	printf("ReTune Mobile %s/%dHz for %dHz sample rate\n",
+	debug("ReTune Mobile %s/%dHz for %dHz sample rate\n",
 		pdata->retune_mobile_cfgs[best].name,
 		pdata->retune_mobile_cfgs[best].rate,
 		wm8904->fs);
@@ -351,7 +351,7 @@ static int wm8904_set_deemph(void)
 		val = 0;
 	}
 
-	printf("Set deemphasis %d\n", val);
+	debug("Set deemphasis %d\n", val);
 
 	return wm8904_update_bits(WM8904_DAC_DIGITAL_1,
 				   WM8904_DEEMPH_MASK, val);
@@ -440,13 +440,13 @@ int wm8904_hw_params(int aif_id,
 	/* What BCLK do we need? */
 	wm8904->fs = sampling_rate;
 	if (wm8904->tdm_slots) {
-		printf("Configuring for %d %d bit TDM slots\n",
+		debug("Configuring for %d %d bit TDM slots\n",
 			wm8904->tdm_slots, wm8904->tdm_width);
 		wm8904->bclk = snd_soc_calc_bclk(wm8904->fs,
 						 wm8904->tdm_width, 2,
 						 wm8904->tdm_slots);
 	} else {
-		wm8904->bclk = sampling_rate * 32 * 1;
+		wm8904->bclk = sampling_rate * 2 * 32 * 1;
 	}
 
 	switch (bits_per_sample) {
@@ -466,7 +466,7 @@ int wm8904_hw_params(int aif_id,
 	}
 
 
-	printf("Target BCLK is %dHz\n", wm8904->bclk);
+	debug("Target BCLK is %dHz\n", wm8904->bclk);
 
 	ret = wm8904_configure_clocking();
 	if (ret != 0)
@@ -484,7 +484,7 @@ int wm8904_hw_params(int aif_id,
 			best_val = cur_val;
 		}
 	}
-	printf("Selected CLK_SYS_RATIO of %d\n",
+	debug("Selected CLK_SYS_RATIO of %d\n",
 		clk_sys_rates[best].ratio);
 	clock1 |= (clk_sys_rates[best].clk_sys_rate
 		   << WM8904_CLK_SYS_RATE_SHIFT);
@@ -500,7 +500,7 @@ int wm8904_hw_params(int aif_id,
 			best_val = cur_val;
 		}
 	}
-	printf("Selected SAMPLE_RATE of %dHz\n",
+	debug("Selected SAMPLE_RATE of %dHz\n",
 		sample_rates[best].rate);
 	clock1 |= (sample_rates[best].sample_rate
 		   << WM8904_SAMPLE_RATE_SHIFT);
@@ -523,12 +523,12 @@ int wm8904_hw_params(int aif_id,
 		}
 	}
 	wm8904->bclk = (wm8904->sysclk_rate * 10) / bclk_divs[best].div;
-	printf("Selected BCLK_DIV of %d for %dHz BCLK\n",
+	debug("Selected BCLK_DIV of %d for %dHz BCLK\n",
 		bclk_divs[best].div, wm8904->bclk);
 	aif2 |= bclk_divs[best].bclk_div;
 
 	/* LRCLK is a simple fraction of BCLK */
-	printf("LRCLK_RATE is %d\n", wm8904->bclk / wm8904->fs);
+	debug("LRCLK_RATE is %d\n", wm8904->bclk / wm8904->fs);
 	aif3 |= wm8904->bclk / wm8904->fs;
 
 	/* Apply the settings */
@@ -571,7 +571,7 @@ int wm8904_set_sysclk(int clk_id,
 		return -1;
 	}
 
-	printf("Clock source is %d at %uHz\n", clk_id, freq);
+	debug("Clock source is %d at %uHz\n", clk_id, freq);
 
 	wm8904_configure_clocking();
 
@@ -773,13 +773,13 @@ static int fll_factors(struct _fll_div *fll_div, unsigned int Fref,
 		fll_div->fll_clk_ref_div++;
 
 		if (div > 8) {
-			printf("Can't scale %dMHz input down to <=13.5MHz\n",
+			debug("Can't scale %dMHz input down to <=13.5MHz\n",
 			       Fref);
 			return -1;
 		}
 	}
 
-	printf("Fref=%u Fout=%u\n", Fref, Fout);
+	debug("Fref=%u Fout=%u\n", Fref, Fout);
 
 	/* Apply the division for our remaining calculations */
 	Fref /= div;
@@ -789,7 +789,7 @@ static int fll_factors(struct _fll_div *fll_div, unsigned int Fref,
 	while (Fout * div < 90000000) {
 		div++;
 		if (div > 64) {
-			printf("Unable to find FLL_OUTDIV for Fout=%uHz\n",
+			debug("Unable to find FLL_OUTDIV for Fout=%uHz\n",
 			       Fout);
 			return -1;
 		}
@@ -797,7 +797,7 @@ static int fll_factors(struct _fll_div *fll_div, unsigned int Fref,
 	target = Fout * div;
 	fll_div->fll_outdiv = div - 1;
 
-	printf("Fvco=%dHz\n", target);
+	debug("Fvco=%dHz\n", target);
 
 	/* Find an appropriate FLL_FRATIO and factor it out of the target */
 	for (i = 0; i < ARRAY_SIZE(fll_fratios); i++) {
@@ -808,7 +808,7 @@ static int fll_factors(struct _fll_div *fll_div, unsigned int Fref,
 		}
 	}
 	if (i == ARRAY_SIZE(fll_fratios)) {
-		printf("Unable to find FLL_FRATIO for Fref=%uHz\n", Fref);
+		debug("Unable to find FLL_FRATIO for Fref=%uHz\n", Fref);
 		return -1;
 	}
 
@@ -817,7 +817,7 @@ static int fll_factors(struct _fll_div *fll_div, unsigned int Fref,
 
 	fll_div->n = Ndiv;
 	Nmod = target % Fref;
-	printf("Nmod=%d\n", Nmod);
+	debug("Nmod=%d\n", Nmod);
 
 	/* Calculate fractional part - scale up so we can round. */
 	Kpart = FIXED_FLL_SIZE * (long long)Nmod;
@@ -832,7 +832,7 @@ static int fll_factors(struct _fll_div *fll_div, unsigned int Fref,
 	/* Move down to proper range now rounding is done */
 	fll_div->k = K / 10;
 
-	printf("N=%x K=%x FLL_FRATIO=%x FLL_OUTDIV=%x FLL_CLK_REF_DIV=%x\n",
+	debug("N=%x K=%x FLL_FRATIO=%x FLL_OUTDIV=%x FLL_CLK_REF_DIV=%x\n",
 		 fll_div->n, fll_div->k,
 		 fll_div->fll_fratio, fll_div->fll_outdiv,
 		 fll_div->fll_clk_ref_div);
@@ -856,7 +856,7 @@ int wm8904_set_fll(int fll_id, int source,
 	wm8904_i2c_read(WM8904_CLOCK_RATES_2, &clock2);
 
 	if (Fout == 0) {
-		printf("FLL disabled\n");
+		debug("FLL disabled\n");
 
 		wm8904->fll_fref = 0;
 		wm8904->fll_fout = 0;
@@ -882,7 +882,7 @@ int wm8904_set_fll(int fll_id, int source,
 		break;
 
 	case WM8904_FLL_FREE_RUNNING:
-		printf("Using free running FLL\n");
+		debug("Using free running FLL\n");
 		/* Force 12MHz and output/4 for now */
 		Fout = 12000000;
 		Fref = 12000000;
@@ -892,7 +892,7 @@ int wm8904_set_fll(int fll_id, int source,
 		break;
 
 	default:
-		printf("Unknown FLL ID %d\n", fll_id);
+		debug("Unknown FLL ID %d\n", fll_id);
 		return -1;
 	}
 
@@ -958,7 +958,7 @@ int wm8904_set_fll(int fll_id, int source,
 			    fll_div.fll_clk_ref_div 
 			    << WM8904_FLL_CLK_REF_DIV_SHIFT);
 
-	printf("FLL configured for %dHz->%dHz\n", Fref, Fout);
+	debug("FLL configured for %dHz->%dHz\n", Fref, Fout);
 
 	wm8904->fll_fref = Fref;
 	wm8904->fll_fout = Fout;
@@ -1050,7 +1050,7 @@ int wm8904_set_bias_level(enum soc_bias_level level)
 
 		break;
 	}
-	printf("%s: wm8904 bias level: %d\n", __func__, level);
+	debug("%s: wm8904 bias level: %d\n", __func__, level);
 	bias_level = level;
 	return 0;
 }
@@ -1070,7 +1070,7 @@ int wm8904_probe()
 	case WM8912:
 		break;
 	default:
-		printf("Unknown device type %d\n",
+		debug("Unknown device type %d\n",
 			wm8904->devtype);
 		return -1;
 	}
@@ -1097,26 +1097,26 @@ int wm8904_i2c_probe()
 
 	ret = wm8904_i2c_read(WM8904_SW_RESET_AND_ID, &val);
 	if (ret < 0) {
-		printf("Failed to read ID register: %d\n", ret);
+		debug("Failed to read ID register: %d\n", ret);
 		goto err_enable;
 	}
 	if (val != 0x8904) {
-		printf("Device is not a WM8904, ID is %x\n", val);
+		debug("Device is not a WM8904, ID is %x\n", val);
 		ret = -1;
 		goto err_enable;
 	}
 
 	ret = wm8904_i2c_read(WM8904_REVISION, &val);
 	if (ret < 0) {
-		printf("Failed to read device revision: %d\n",
+		debug("Failed to read device revision: %d\n",
 			ret);
 		goto err_enable;
 	}
-	printf("revision %c\n", val + 'A');
+	debug("\nrevision %c\n", val + 'A');
 
 	ret = wm8904_i2c_write(WM8904_SW_RESET_AND_ID, 0);
 	if (ret < 0) {
-		printf("Failed to issue reset: %d\n", ret);
+		debug("Failed to issue reset: %d\n", ret);
 		goto err_enable;
 	}
 
@@ -1257,7 +1257,7 @@ static int out_pga_event(int event, int aif)
 		 * if we have that.
 		 */
 		if (wm8904->dcs_state[dcs_l] || wm8904->dcs_state[dcs_r]) {
-			printf("Restoring DC servo state\n");
+			debug("Restoring DC servo state\n");
 
 			wm8904_i2c_write(dcs_l_reg,
 				      wm8904->dcs_state[dcs_l]);
@@ -1268,7 +1268,7 @@ static int out_pga_event(int event, int aif)
 
 			timeout = 20;
 		} else {
-			printf("Calibrating DC servo\n");
+			debug("Calibrating DC servo\n");
 
 			wm8904_i2c_write(WM8904_DC_SERVO_1,
 				dcs_mask << WM8904_DCS_TRIG_STARTUP_0_SHIFT);
@@ -1283,13 +1283,13 @@ static int out_pga_event(int event, int aif)
 			if ((val & dcs_mask) == dcs_mask)
 				break;
 
-			udelay(1000);
+			udelay(2000);
 		} while (--timeout);
 
 		if ((val & dcs_mask) != dcs_mask)
-			printf("DC servo timed out\n");
+			debug("DC servo timed out\n");
 		else
-			printf("DC servo ready\n");
+			debug("DC servo ready\n");
 
 		/* Enable the output stage */
 		wm8904_update_bits(reg,
@@ -1347,55 +1347,41 @@ int wm8904_init(
 	int ret = 0;
 
 	wm8904_i2c_probe();
-	printf("%s: wm8904 probe i2c success\n", __func__);
+	
+	debug("%s: wm8904 zs probe i2c success\n", __func__);
 	ret =  wm8904_set_sysclk(WM8904_CLK_MCLK,
 							mclk_freq, 1);
 	if (ret < 0) {
-		printf("%s: wm8904 codec set sys clock failed\n", __func__);
+		debug("%s: wm8904 codec set sys clock failed\n", __func__);
 		return ret;
 	}
 
-	ret = wm8904_hw_params(0, sampling_rate,
-						bits_per_sample, channels);
+	/*ret = wm8904_hw_params(0, sampling_rate,
+						bits_per_sample, channels);*/
 
 	if (ret == 0) {
 		ret = wm8904_set_fmt(SND_SOC_DAIFMT_I2S |
 						SND_SOC_DAIFMT_NB_NF |
 						SND_SOC_DAIFMT_CBS_CFS);
 	}else {
-		printf("hw params failed\n");
+		debug("hw params failed\n");
 	}
+	wm8904_i2c_write(WM8904_DAC_DIGITAL_1, 0x0);
 	out_pga_event(SND_SOC_DAPM_PRE_PMU, WM8904_ANALOGUE_HP_0);
-	out_pga_event(SND_SOC_DAPM_POST_PMU, WM8904_ANALOGUE_HP_0);
 	out_pga_event(SND_SOC_DAPM_PRE_PMU, WM8904_ANALOGUE_LINEOUT_0);
+	out_pga_event(SND_SOC_DAPM_POST_PMU, WM8904_ANALOGUE_HP_0);
 	out_pga_event(SND_SOC_DAPM_POST_PMU, WM8904_ANALOGUE_LINEOUT_0);
-	wm8904_set_bias_level(SND_SOC_BIAS_OFF);
 	wm8904_set_bias_level(SND_SOC_BIAS_STANDBY);
 	wm8904_set_bias_level(SND_SOC_BIAS_PREPARE);
 	wm8904_set_bias_level(SND_SOC_BIAS_ON);
-
-	/*wm8904_update_bits(WM8904_CLOCK_RATES_2, WM8904_CLK_DSP_ENA, WM8904_CLK_DSP_ENA);
-	wm8904_update_bits(WM8904_POWER_MANAGEMENT_6, WM8904_DACL_ENA, WM8904_DACL_ENA);
-	wm8904_update_bits(WM8904_POWER_MANAGEMENT_6, WM8904_DACR_ENA, WM8904_DACR_ENA);
-	wm8904_update_bits(WM8904_CHARGE_PUMP_0, WM8904_CP_ENA, WM8904_CP_ENA);
-	wm8904_update_bits(WM8904_ANALOGUE_LINEOUT_0, WM8904_LINEOUTL_ENA_OUTP, WM8904_LINEOUTL_ENA_OUTP);
-	wm8904_update_bits(WM8904_ANALOGUE_LINEOUT_0, WM8904_LINEOUTR_ENA_OUTP, WM8904_LINEOUTR_ENA_OUTP);
-	wm8904_update_bits(WM8904_ANALOGUE_HP_0, WM8904_HPL_ENA_OUTP, WM8904_HPL_ENA_OUTP);
-	wm8904_update_bits(WM8904_ANALOGUE_HP_0, WM8904_HPR_ENA_OUTP, WM8904_HPR_ENA_OUTP);
-	wm8904_update_bits(WM8904_ANALOGUE_HP_0, WM8904_HPL_ENA_DLY, WM8904_HPL_ENA_DLY);
-	wm8904_update_bits(WM8904_ANALOGUE_HP_0, WM8904_HPR_ENA_DLY, WM8904_HPR_ENA_DLY);
-	wm8904_update_bits(WM8904_ANALOGUE_LINEOUT_0, WM8904_LINEOUTR_ENA_DLY, WM8904_LINEOUTR_ENA_DLY);
-	wm8904_update_bits(WM8904_ANALOGUE_LINEOUT_0, WM8904_LINEOUTL_ENA_DLY, WM8904_LINEOUTL_ENA_DLY);
-	//wm8904_update_bits(WM8904_DCS_ENA_CHAN_0 | WM8904_DCS_ENA_CHAN_1 | WM8904_DCS_ENA_CHAN_2 | WM8904_DCS_ENA_CHAN_3, WM8904_DCS_ENA_CHAN_0 | WM8904_DCS_ENA_CHAN_1 | WM8904_DCS_ENA_CHAN_2 | WM8904_DCS_ENA_CHAN_3);
-	//wm8904_update_bits(WM8904_DCS_TRIG_STARTUP_0 | WM8904_DCS_TRIG_STARTUP_1 | WM8904_DCS_TRIG_STARTUP_2 | WM8904_DCS_TRIG_STARTUP_3, WM8904_DCS_TRIG_STARTUP_0 | WM8904_DCS_TRIG_STARTUP_1 | WM8904_DCS_TRIG_STARTUP_2 | WM8904_DCS_TRIG_STARTUP_3);
-	wm8904_update_bits(WM8904_ANALOGUE_HP_0, WM8904_HPL_ENA_OUTP, WM8904_HPL_ENA_OUTP);
-	wm8904_update_bits(WM8904_ANALOGUE_HP_0, WM8904_HPR_ENA_OUTP, WM8904_HPR_ENA_OUTP);
-	wm8904_update_bits(WM8904_ANALOGUE_LINEOUT_0, WM8904_LINEOUTL_ENA_OUTP, WM8904_LINEOUTL_ENA_OUTP);
-	wm8904_update_bits(WM8904_ANALOGUE_LINEOUT_0, WM8904_LINEOUTR_ENA_OUTP ,WM8904_LINEOUTR_ENA_OUTP);
-	wm8904_update_bits(WM8904_ANALOGUE_HP_0, WM8904_HPL_RMV_SHORT, WM8904_HPL_RMV_SHORT);
-	wm8904_update_bits(WM8904_ANALOGUE_HP_0, WM8904_HPR_RMV_SHORT, WM8904_HPR_RMV_SHORT);
-	wm8904_update_bits(WM8904_ANALOGUE_LINEOUT_0, WM8904_LINEOUTL_RMV_SHORT, WM8904_LINEOUTL_RMV_SHORT);
-	wm8904_update_bits(WM8904_ANALOGUE_LINEOUT_0, WM8904_LINEOUTR_RMV_SHORT, WM8904_LINEOUTR_RMV_SHORT);*/
+	wm8904_update_bits(WM8904_POWER_MANAGEMENT_6, 0xc, 0xc);
+	wm8904_update_bits(WM8904_CLOCK_RATES_2, 0x7, 0x7);
+	wm8904_update_bits(WM8904_CHARGE_PUMP_0,0x1,0x1);
+	udelay(200*1000);
+	u16 dummy, addr;
+	for (addr = 0; addr <= 0xf8; addr++) {
+		wm8904_i2c_read(addr, &dummy);
+	}
 	return ret;
 }
 

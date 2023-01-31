@@ -70,6 +70,7 @@
 /* DMA 传输目的端 配置 */
 #define	DMAC_CFG_DEST_TYPE_SRAM					(0x00)
 #define	DMAC_CFG_DEST_TYPE_DRAM		    		(0x01)
+#define DMAC_CFG_DEST_TYPE_I2S_0_TX             (0x03)
 
 #define DMAC_CFG_DEST_TYPE_NAND					(5)
 
