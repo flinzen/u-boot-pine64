@@ -175,6 +175,10 @@ int sound_play(uint32_t msec, uint32_t frequency)
 	unsigned int *data;
 	unsigned long data_size;
 	unsigned int ret = 0;
+	if (!frequency) { 
+		udelay(msec * 1000); 
+		return 0;
+	}
 
 	/*Buffer length computation */
 	data_size = g_i2stx_pri.samplingrate * g_i2stx_pri.channels;

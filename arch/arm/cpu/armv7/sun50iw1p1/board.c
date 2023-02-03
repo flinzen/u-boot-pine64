@@ -379,7 +379,7 @@ void sunxi_board_close_source(void)
 	//timer_exit should be call after sunxi_flash,because delay function
 	sunxi_flash_exit(1);
 	sunxi_sprite_exit(1);
-	sunxi_dma_exit();
+	//sunxi_dma_exit();
 	timer_exit();
 	sunxi_key_exit();
 	disable_interrupts();

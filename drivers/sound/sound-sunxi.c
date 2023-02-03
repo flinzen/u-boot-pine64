@@ -44,10 +44,47 @@ int sound_init(const void *blob) {
 	return ret;
 }
 
+int sound_play_dma(uint32_t msec, uint32_t frequency) {
+	unsigned int *data;
+	unsigned long data_size;
+	unsigned int ret = 0;
+	if (frequency == 0) { 
+		udelay(msec * 1000); 
+		return 0;
+	}
+
+	/*Buffer length computation */
+	data_size = g_i2stx_pri.samplingrate * g_i2stx_pri.channels;
+	data_size *= (g_i2stx_pri.bitspersample / SOUND_BITS_IN_BYTE);
+	data = malloc(data_size);
+
+	if (data == NULL) {
+		debug("%s: malloc failed\n", __func__);
+		return -1;
+	}
+
+	sound_create_square_wave((unsigned short *)data,
+				 data_size / sizeof(unsigned short),
+				 frequency);
+	ret = i2s_prepare_tx_data(&g_i2stx_pri, data,
+					   (data_size / 4));
+	if (ret < 0) {
+		free(data);
+		printf("error");
+	}
+	
+
+	return ret;
+}
+
 int sound_play(uint32_t msec, uint32_t frequency) {
 	unsigned int *data;
 	unsigned long data_size;
 	unsigned int ret = 0;
+	if (frequency == 0) { 
+		udelay(msec * 1000); 
+		return 0;
+	}
 
 	/*Buffer length computation */
 	data_size = g_i2stx_pri.samplingrate * g_i2stx_pri.channels;

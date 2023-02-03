@@ -256,7 +256,7 @@ static void twsi_reset(u8 baud_rate, u8 slave_address)
 	/* reset controller */
 	writel(0, &twsi->soft_reset);
 	/* wait 2 ms -- this is what the Marvell LSP does */
-	udelay(20000);
+	udelay(2000);
 	/* set baud rate */
 	writel(baud_rate, &twsi->baudrate);
 	/* set slave address even though we don't use it */

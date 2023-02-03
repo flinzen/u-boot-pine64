@@ -47,9 +47,45 @@ static int do_play(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
+static int do_melody(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]) {
+	const u16 melodyEnd = 4096;
+	const u16 melodyIntro[] = { 440,90,0,90,440,90,0,90,220,90,220,90,220,90,0,900,440,90,0,90,440,90,0,90,220,90,220,90,220,90,0,900,440,90,0,90,440,90,0,90,220,90,220,90,220,90,0,900,293,90,0,90,293,90,0,90,146,90,146,90,146,90,0,900,melodyEnd };
+	u32 i = 0;
+	int ret = 0;
+	while (melodyIntro[i] != melodyEnd) {
+		ret = sound_play(melodyIntro[i+1], melodyIntro[i]);
+		if (ret) {
+			return CMD_RET_FAILURE;
+		}
+		i+=2;
+	}
+	return ret;
+}
+
+static int do_play_dma(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]) {
+	int ret = 0;
+	int msec = 1000;
+	int freq = 400;
+
+	if (argc > 1)
+		msec = simple_strtoul(argv[1], NULL, 10);
+	if (argc > 2)
+		freq = simple_strtoul(argv[2], NULL, 10);
+
+	ret = sound_play_dma(msec, freq);
+	if (ret) {
+		printf("play failed");
+		return CMD_RET_FAILURE;
+	}
+	return 0;
+	
+}
+
 static cmd_tbl_t cmd_sound_sub[] = {
 	U_BOOT_CMD_MKENT(init, 0, 1, do_init, "", ""),
 	U_BOOT_CMD_MKENT(play, 2, 1, do_play, "", ""),
+	U_BOOT_CMD_MKENT(dma, 2, 1, do_play_dma, "", ""),
+	U_BOOT_CMD_MKENT(melody, 0, 1, do_melody, "", ""),
 };
 
 /* process sound command */

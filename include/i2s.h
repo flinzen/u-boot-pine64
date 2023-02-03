@@ -99,6 +99,8 @@ struct i2stx_info {
  */
 int i2s_transfer_tx_data(struct i2stx_info *pi2s_tx, unsigned *data,
 				unsigned long data_size);
+int i2s_prepare_tx_data(struct i2stx_info *pi2s_tx, unsigned int *data,
+				unsigned long data_size);
 
 /*
  * Initialise i2s transmiter

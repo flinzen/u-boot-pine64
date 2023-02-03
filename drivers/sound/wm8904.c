@@ -1130,17 +1130,17 @@ int wm8904_i2c_probe()
 	wm8904_update_bits(WM8904_DAC_DIGITAL_VOLUME_RIGHT,
 			   WM8904_DAC_VU, WM8904_DAC_VU);
 	wm8904_update_bits(WM8904_ANALOGUE_OUT1_LEFT,
-			   WM8904_HPOUT_VU | WM8904_HPOUTLZC,
-			   WM8904_HPOUT_VU | WM8904_HPOUTLZC);
+			   WM8904_HPOUT_VU | WM8904_HPOUTLZC | 0x3f,
+			   WM8904_HPOUT_VU | WM8904_HPOUTLZC | 0x3f);
 	wm8904_update_bits(WM8904_ANALOGUE_OUT1_RIGHT,
-			   WM8904_HPOUT_VU | WM8904_HPOUTRZC,
-			   WM8904_HPOUT_VU | WM8904_HPOUTRZC);
+			   WM8904_HPOUT_VU | WM8904_HPOUTRZC | 0x3f,
+			   WM8904_HPOUT_VU | WM8904_HPOUTRZC | 0x3f);
 	wm8904_update_bits(WM8904_ANALOGUE_OUT2_LEFT,
-			   WM8904_LINEOUT_VU | WM8904_LINEOUTLZC,
-			   WM8904_LINEOUT_VU | WM8904_LINEOUTLZC);
+			   WM8904_LINEOUT_VU | WM8904_LINEOUTLZC | 0x3f,
+			   WM8904_LINEOUT_VU | WM8904_LINEOUTLZC | 0x3f);
 	wm8904_update_bits(WM8904_ANALOGUE_OUT2_RIGHT,
-			   WM8904_LINEOUT_VU | WM8904_LINEOUTRZC,
-			   WM8904_LINEOUT_VU | WM8904_LINEOUTRZC);
+			   WM8904_LINEOUT_VU | WM8904_LINEOUTRZC | 0x3f,
+			   WM8904_LINEOUT_VU | WM8904_LINEOUTRZC | 0x3f);
 	wm8904_update_bits(WM8904_CLOCK_RATES_0,
 			   WM8904_SR_MODE, 0);
 
@@ -1283,7 +1283,7 @@ static int out_pga_event(int event, int aif)
 			if ((val & dcs_mask) == dcs_mask)
 				break;
 
-			udelay(2000);
+			udelay(1000);
 		} while (--timeout);
 
 		if ((val & dcs_mask) != dcs_mask)
@@ -1377,11 +1377,6 @@ int wm8904_init(
 	wm8904_update_bits(WM8904_POWER_MANAGEMENT_6, 0xc, 0xc);
 	wm8904_update_bits(WM8904_CLOCK_RATES_2, 0x7, 0x7);
 	wm8904_update_bits(WM8904_CHARGE_PUMP_0,0x1,0x1);
-	udelay(200*1000);
-	u16 dummy, addr;
-	for (addr = 0; addr <= 0xf8; addr++) {
-		wm8904_i2c_read(addr, &dummy);
-	}
 	return ret;
 }
 
