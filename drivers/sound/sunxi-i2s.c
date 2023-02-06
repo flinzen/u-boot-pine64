@@ -463,13 +463,13 @@ int i2s_dma_config_start(struct sunxi_i2s_reg *i2s_reg, dma_addr_t addr,__u32 le
 	dma_set.cfg.src_drq_type = DMAC_CFG_SRC_TYPE_DRAM;
 	dma_set.cfg.src_addr_mode = DMAC_CFG_SRC_ADDR_TYPE_LINEAR_MODE;
 	dma_set.cfg.src_burst_length = DMAC_CFG_SRC_1_BURST; //8
-	dma_set.cfg.src_data_width = DMAC_CFG_SRC_DATA_WIDTH_32BIT;
+	dma_set.cfg.src_data_width = DMAC_CFG_SRC_DATA_WIDTH_16BIT;
 	dma_set.cfg.reserved0 = 0;
 
 	dma_set.cfg.dst_drq_type = DMAC_CFG_DEST_TYPE_I2S_0_TX;
 	dma_set.cfg.dst_addr_mode = DMAC_CFG_DEST_ADDR_TYPE_IO_MODE;
 	dma_set.cfg.dst_burst_length = DMAC_CFG_DEST_1_BURST; //8
-	dma_set.cfg.dst_data_width = DMAC_CFG_DEST_DATA_WIDTH_32BIT;
+	dma_set.cfg.dst_data_width = DMAC_CFG_DEST_DATA_WIDTH_16BIT;
 	dma_set.cfg.reserved1 = 0;
 
 	if ( sunxi_dma_setting(dma_chan, &dma_set) < 0) {

@@ -181,7 +181,7 @@ void do_prefetch_abort (struct pt_regs *pt_regs)
 
 void do_data_abort (struct pt_regs *pt_regs)
 {
-	printf ("data abort\n");
+	printf ("data abort JDKSJDJ\n");
 	show_regs (pt_regs);
 	bad_mode ();
 }

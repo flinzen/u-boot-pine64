@@ -281,8 +281,9 @@ s32 drv_disp_init(void)
 	printf("%s\n", __func__);
 	disp_fdt_init();
 	//for_test
-	printf("init clocks\n");
+	printf("init clocks here\n");
 	clk_init();
+	printf("inited clocks\n");
 	/* check if the resolution of lcd supported */
 	drv_disp_check_spec();
 

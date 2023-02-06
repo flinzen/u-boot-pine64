@@ -4,6 +4,7 @@
 #include <asm/io.h>
 #include <i2c.h>
 #include <i2s.h>
+#include <fs.h>
 #include "wm8904.h"
 /* defines */
 #define SOUND_400_HZ 440
@@ -68,6 +69,58 @@ int sound_play_dma(uint32_t msec, uint32_t frequency) {
 				 frequency);
 	ret = i2s_prepare_tx_data(&g_i2stx_pri, data,
 					   (data_size / 4));
+	if (ret < 0) {
+		free(data);
+		printf("error");
+	}
+	
+
+	return ret;
+}
+
+int sound_play_file(uint32_t msec, uint32_t frequency) {
+	unsigned int *data;
+	unsigned long data_size;
+	unsigned int ret = 0;
+	if (frequency == 0) { 
+		udelay(msec * 1000); 
+		return 0;
+	}
+
+	/*Buffer length computation */
+	data_size = g_i2stx_pri.samplingrate * g_i2stx_pri.channels;
+	data_size *= (g_i2stx_pri.bitspersample / SOUND_BITS_IN_BYTE);
+	data_size *= 30;
+	data = malloc(data_size);
+
+	if (data == NULL) {
+		debug("%s: malloc failed\n", __func__);
+		return -1;
+	}
+	fs_set_blk_dev("mmc", "0:1", FS_TYPE_ANY);
+	ret = fs_read("audio.wav", (ulong) data, 78, data_size);
+		if (ret < 0) {
+		// free(data);
+		printf("error in reading audio file\n");
+	}
+
+	u32 i;
+	u8 tmp;
+	u8* tmp_data = (u8 *) data;
+	printf("data_size: %lu \n", data_size);
+	for (i = 0; i < 1024; i++) {
+		tmp = *(tmp_data+i);
+		printf("%x ", tmp);
+		if (i != 0 && i % 8 == 0) {printf("\n");}
+		// *(tmp_data + i) = *(tmp_data + (data_size - i - 1));
+		// *(tmp_data + (data_size - i - 1)) = tmp;
+	}
+	printf("\n");
+
+
+
+	ret = i2s_prepare_tx_data(&g_i2stx_pri, data,
+					   (data_size));
 	if (ret < 0) {
 		free(data);
 		printf("error");

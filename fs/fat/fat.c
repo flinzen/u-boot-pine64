@@ -279,7 +279,7 @@ get_cluster(fsdata *mydata, __u32 clustnum, __u8 *buffer, unsigned long size)
 		while (size >= mydata->sect_size) {
 			ret = disk_read(startsect++, 1, tmpbuf);
 			if (ret != 1) {
-				debug("Error reading data (got %d)\n", ret);
+				printf("Error reading data (got %d)\n", ret);
 				return -1;
 			}
 

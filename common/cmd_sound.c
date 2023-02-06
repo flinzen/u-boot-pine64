@@ -81,11 +81,31 @@ static int do_play_dma(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	
 }
 
+static int do_play_file(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]) {
+	int ret = 0;
+	int msec = 1000;
+	int freq = 400;
+
+	if (argc > 1)
+		msec = simple_strtoul(argv[1], NULL, 10);
+	if (argc > 2)
+		freq = simple_strtoul(argv[2], NULL, 10);
+
+	ret = sound_play_file(msec, freq);
+	if (ret) {
+		printf("play failed");
+		return CMD_RET_FAILURE;
+	}
+	return 0;
+	
+}
+
 static cmd_tbl_t cmd_sound_sub[] = {
 	U_BOOT_CMD_MKENT(init, 0, 1, do_init, "", ""),
 	U_BOOT_CMD_MKENT(play, 2, 1, do_play, "", ""),
 	U_BOOT_CMD_MKENT(dma, 2, 1, do_play_dma, "", ""),
 	U_BOOT_CMD_MKENT(melody, 0, 1, do_melody, "", ""),
+	U_BOOT_CMD_MKENT(file, 2, 1, do_play_file, "", ""),
 };
 
 /* process sound command */

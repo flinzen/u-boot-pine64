@@ -1366,6 +1366,7 @@ int wm8904_init(
 	}else {
 		debug("hw params failed\n");
 	}
+	wm8904_update_bits(WM8904_AUDIO_INTERFACE_0, 3 << 9, 3 << 9);
 	wm8904_i2c_write(WM8904_DAC_DIGITAL_1, 0x0);
 	out_pga_event(SND_SOC_DAPM_PRE_PMU, WM8904_ANALOGUE_HP_0);
 	out_pga_event(SND_SOC_DAPM_PRE_PMU, WM8904_ANALOGUE_LINEOUT_0);
