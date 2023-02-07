@@ -90,7 +90,7 @@ int sound_play_file(uint32_t msec, uint32_t frequency) {
 	/*Buffer length computation */
 	data_size = g_i2stx_pri.samplingrate * g_i2stx_pri.channels;
 	data_size *= (g_i2stx_pri.bitspersample / SOUND_BITS_IN_BYTE);
-	data_size *= 30;
+	data_size *= 18;
 	data = malloc(data_size);
 
 	if (data == NULL) {
@@ -104,20 +104,7 @@ int sound_play_file(uint32_t msec, uint32_t frequency) {
 		printf("error in reading audio file\n");
 	}
 
-	u32 i;
-	u8 tmp;
-	u8* tmp_data = (u8 *) data;
 	printf("data_size: %lu \n", data_size);
-	for (i = 0; i < 1024; i++) {
-		tmp = *(tmp_data+i);
-		printf("%x ", tmp);
-		if (i != 0 && i % 8 == 0) {printf("\n");}
-		// *(tmp_data + i) = *(tmp_data + (data_size - i - 1));
-		// *(tmp_data + (data_size - i - 1)) = tmp;
-	}
-	printf("\n");
-
-
 
 	ret = i2s_prepare_tx_data(&g_i2stx_pri, data,
 					   (data_size));
